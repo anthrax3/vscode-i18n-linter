@@ -17,15 +17,9 @@
   ],
   "main": "./out/extension",
   "contributes": {
-    "commands": [
-      {
-        "command": "vscode-react-i18n.extractI18N",
-        "title": "Extract to I18N"
-      }
-    ],
     "configuration": {
       "type": "object",
-      "title": "TypeScript configuration",
+      "title": "Toggle vscode-react-i18n",
       "properties": {
         "vscode-react-i18n.markChineseCharacters": {
           "type": "boolean",
