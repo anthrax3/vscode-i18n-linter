@@ -1,43 +1,66 @@
 {
-    "name": "vscode-react-i18n",
-    "displayName": "React I18N",
-    "description": "A VSCode extension to identify and extract string literals in React components",
-    "version": "0.1.0",
-    "publisher": "jasonslyvia",
-    "engines": {
-        "vscode": "^1.18.0"
-    },
-    "categories": [
-        "Other",
-        "Linters"
+  "name": "vscode-react-i18n",
+  "displayName": "React I18N",
+  "description": "A VSCode extension to identify and extract string literals in React components",
+  "version": "0.1.0",
+  "publisher": "jasonslyvia",
+  "engines": {
+    "vscode": "^1.18.0"
+  },
+  "categories": [
+    "Other",
+    "Linters"
+  ],
+  "activationEvents": [
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact"
+  ],
+  "main": "./out/extension",
+  "contributes": {
+    "commands": [
+      {
+        "command": "vscode-react-i18n.extractI18N",
+        "title": "Extract to I18N"
+      }
     ],
-    "activationEvents": [
-        "onLanguage:typescriptreact"
-    ],
-    "main": "./out/extension",
-    "contributes": {
-        "commands": [
-            {
-                "command": "extension.sayHello",
-                "title": "Hello World"
-            }
-        ]
+    "configuration": {
+      "type": "object",
+      "title": "TypeScript configuration",
+      "properties": {
+        "vscode-react-i18n.markChineseCharacters": {
+          "type": "boolean",
+          "default": true,
+          "description": "Mark Chinese characters in editor so you can quickly spot on them"
+        }
+      }
     },
-    "keywords": [
-        "React",
-        "i18n"
-    ],
-    "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
-        "postinstall": "node ./node_modules/vscode/bin/install",
-        "test": "npm run compile && node ./node_modules/vscode/bin/test"
-    },
-    "devDependencies": {
-        "typescript": "^2.6.1",
-        "vscode": "^1.1.6",
-        "@types/node": "^7.0.43",
-        "@types/mocha": "^2.2.42"
+    "menus": {
+      "editor/context": [
+        {
+          "command": "vscode-react-i18n.extractI18N",
+          "group": "1_modification"
+        }
+      ]
     }
+  },
+  "keywords": [
+    "React",
+    "i18n"
+  ],
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "postinstall": "node ./node_modules/vscode/bin/install",
+    "test": "npm run compile && node ./node_modules/vscode/bin/test"
+  },
+  "devDependencies": {
+    "typescript": "^2.6.1",
+    "vscode": "^1.1.6",
+    "@types/node": "^7.0.43",
+    "@types/mocha": "^2.2.42"
+  },
+  "dependencies": {
+    "lodash": "^4.17.4"
+  }
 }
