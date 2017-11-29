@@ -3,17 +3,40 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { flatten } from './utils';
+import * as globby from 'globby';
+import * as _ from 'lodash';
 
 export function activate(context: vscode.ExtensionContext) {
-
 	let activeEditor = vscode.window.activeTextEditor;
 	if (activeEditor) {
 		triggerUpdateDecorations();
 	}
 
-	const i18n = fs.readFileSync(`${vscode.workspace.rootPath}/langs/zh_CN/index.ts`, {
-		encoding: 'utf8'
-	});
+	const paths = globby.sync(`${vscode.workspace.rootPath}/langs/zh_CN/*.ts`);
+
+	const langObj = paths.reduce((prev, curr) => {
+		const filename = curr.split('/').pop().replace(/\.tsx?$/, '')
+		if (filename.replace(/\.tsx?/, '') === 'index') {
+			return prev;
+		}
+
+		const fileContent = fs.readFileSync(curr, { encoding: 'utf8' });
+		const obj = fileContent.match(/export\s*default\s*({[\s\S]+);?$/)[1];
+
+		let jsObj = {};
+		try {
+			jsObj = JSON.parse(obj.replace(/\s*;\s*$/, ''));
+		} catch (err) {
+			console.error(err);
+		}
+
+		return {
+			...prev,
+			[filename]: jsObj,
+		};
+	}, {});
+
+	const finalLangObj = flatten(langObj) as any;
 
 	// 识别到出错时点击小灯泡弹出的操作
 	vscode.languages.registerCodeActionsProvider('typescriptreact', {
@@ -21,41 +44,67 @@ export function activate(context: vscode.ExtensionContext) {
 			const targetStr = targetStrs.find(t => range.intersection(t.range) !== undefined);
 			if (targetStr) {
 				const sameTextStrs = targetStrs.filter(t => t.text === targetStr.text);
+				const text = targetStr.text;
 
-				return [{
-					title: `抽取为 I18N 变量（共${sameTextStrs.length}处）`,
+				const actions = [];
+				for (const key in finalLangObj) {
+					if (finalLangObj[key].includes(text)) {
+						actions.push({
+							title: `抽取为 \`I18N.${key}\``,
+							command: "vscode-react-i18n.extractI18N",
+							arguments: [{
+								targets: sameTextStrs,
+								varName: `I18N.${key}`,
+							}]
+						});
+					}
+				}
+
+				return actions.concat({
+					title: `抽取为自定义 I18N 变量（共${sameTextStrs.length}处）`,
 					command: "vscode-react-i18n.extractI18N",
-					arguments: sameTextStrs,
-				}];
+					arguments: [{
+						targets: sameTextStrs,
+					}],
+				});
 			}
 		}
 	});
 
 	// 点击小灯泡后进行替换操作
-	vscode.commands.registerCommand('vscode-react-i18n.extractI18N', (...args) => {
-		vscode.window.showInputBox({
-			prompt: '请输入对应的 I18N 变量，按 <回车> 启动替换',
-			value: 'I18N.',
-			validateInput(input) {
-				if (!input.startsWith('I18N.')) {
-					return '请确保变量名以 `I18N.` 开头';
-				}
-
-				if (input.length < 5) {
-					return '请输入变量名';
-				}
+	vscode.commands.registerCommand('vscode-react-i18n.extractI18N', (args) => {
+		new Promise(resolve => {
+			// 若变量名已确定则直接开始替换
+			if (args.varName) {
+				return resolve(args.varName);
 			}
+
+			// 否则要求用户输入变量名
+			return resolve(vscode.window.showInputBox({
+				prompt: '请输入对应的 I18N 变量，按 <回车> 启动替换',
+				value: 'I18N.',
+				validateInput(input) {
+					if (!input.startsWith('I18N.')) {
+						return '请确保变量名以 `I18N.` 开头';
+					}
+
+					if (input.length < 5) {
+						return '请输入变量名';
+					}
+				}
+			}));
 		})
-		.then(val => {
+		.then((val: string) => {
 			// 没有输入变量名
 			if (!val) {
 				return;
 			}
-			const { document } = vscode.window.activeTextEditor;
-			const finalArgs = Array.isArray(args) ? args : [args];
+
+			const finalArgs = Array.isArray(args.targets) ? args.targets : [args.targets];
 
 			finalArgs.forEach((arg: TargetStr) => {
 				const edit = new vscode.WorkspaceEdit();
+				const { document } = vscode.window.activeTextEditor;
 
 				// 若是字符串，删掉两侧的引号
 				if (arg.isString) {

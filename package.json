@@ -61,6 +61,7 @@
     "@types/mocha": "^2.2.42"
   },
   "dependencies": {
+    "globby": "^7.1.1",
     "lodash": "^4.17.4"
   }
 }

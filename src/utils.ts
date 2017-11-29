@@ -5,7 +5,7 @@
  */
 import * as _ from 'lodash';
 
-export function flatten(obj, prefix) {
+export function flatten(obj, prefix?) {
   var propName = (prefix) ? prefix + '.' : '',
     ret = {};
 
