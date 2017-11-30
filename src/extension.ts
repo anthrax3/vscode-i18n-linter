@@ -6,13 +6,22 @@ import { flatten } from './utils';
 import * as globby from 'globby';
 import * as _ from 'lodash';
 
+const I18N_GLOB = `${vscode.workspace.rootPath}/langs/zh_CN/*.ts`;
+
 export function activate(context: vscode.ExtensionContext) {
+	let finalLangObj = {};
+
 	let activeEditor = vscode.window.activeTextEditor;
 	if (activeEditor) {
 		triggerUpdateDecorations();
 	}
 
-	const finalLangObj = getSuggestLangObj();
+	// 监听 langs/ 文件夹下的变化，重新生成 finalLangObj
+	const watcher = vscode.workspace.createFileSystemWatcher(I18N_GLOB);
+	watcher.onDidChange(() => finalLangObj = getSuggestLangObj());
+	watcher.onDidCreate(() => finalLangObj = getSuggestLangObj());
+	watcher.onDidDelete(() => finalLangObj = getSuggestLangObj());
+	finalLangObj = getSuggestLangObj();
 
 	// 识别到出错时点击小灯泡弹出的操作
 	vscode.languages.registerCodeActionsProvider('typescriptreact', {
@@ -204,7 +213,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 function getSuggestLangObj() {
-	const paths = globby.sync(`${vscode.workspace.rootPath}/langs/zh_CN/*.ts`);
+	const paths = globby.sync(I18N_GLOB);
 	const langObj = paths.reduce((prev, curr) => {
 		const filename = curr.split('/').pop().replace(/\.tsx?$/, '');
 		if (filename.replace(/\.tsx?/, '') === 'index') {
