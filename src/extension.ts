@@ -12,31 +12,7 @@ export function activate(context: vscode.ExtensionContext) {
 		triggerUpdateDecorations();
 	}
 
-	const paths = globby.sync(`${vscode.workspace.rootPath}/langs/zh_CN/*.ts`);
-
-	const langObj = paths.reduce((prev, curr) => {
-		const filename = curr.split('/').pop().replace(/\.tsx?$/, '')
-		if (filename.replace(/\.tsx?/, '') === 'index') {
-			return prev;
-		}
-
-		const fileContent = fs.readFileSync(curr, { encoding: 'utf8' });
-		const obj = fileContent.match(/export\s*default\s*({[\s\S]+);?$/)[1];
-
-		let jsObj = {};
-		try {
-			jsObj = JSON.parse(obj.replace(/\s*;\s*$/, ''));
-		} catch (err) {
-			console.error(err);
-		}
-
-		return {
-			...prev,
-			[filename]: jsObj,
-		};
-	}, {});
-
-	const finalLangObj = flatten(langObj) as any;
+	const finalLangObj = getSuggestLangObj();
 
 	// 识别到出错时点击小灯泡弹出的操作
 	vscode.languages.registerCodeActionsProvider('typescriptreact', {
@@ -193,11 +169,6 @@ export function activate(context: vscode.ExtensionContext) {
 				continue;
 			}
 
-			if (match[0].includes('操作工具条')) {
-				console.log(match[0]);
-				console.log(m);
-			}
-
 			const leftTrim = match[0].replace(/^[>\s]*/m, '');
 			const rightTrim = match[0].replace(/[<\{\s]*$/m, '');
 			const leftOffset = match[0].length - leftTrim.length;
@@ -219,6 +190,31 @@ export function activate(context: vscode.ExtensionContext) {
     }
 		activeEditor.setDecorations(chineseCharDecoration, chineseChars);
 	}
+}
+
+function getSuggestLangObj() {
+	const paths = globby.sync(`${vscode.workspace.rootPath}/langs/zh_CN/*.ts`);
+	const langObj = paths.reduce((prev, curr) => {
+		const filename = curr.split('/').pop().replace(/\.tsx?$/, '');
+		if (filename.replace(/\.tsx?/, '') === 'index') {
+			return prev;
+		}
+		const fileContent = fs.readFileSync(curr, { encoding: 'utf8' });
+		const obj = fileContent.match(/export\s*default\s*({[\s\S]+);?$/)[1];
+		let jsObj = {};
+		try {
+			jsObj = JSON.parse(obj.replace(/\s*;\s*$/, ''));
+		}
+		catch (err) {
+			console.error(err);
+		}
+		return {
+			...prev,
+			[filename]: jsObj,
+		};
+	}, {});
+	const finalLangObj = flatten(langObj) as any;
+	return finalLangObj;
 }
 
 // this method is called when your extension is deactivated
