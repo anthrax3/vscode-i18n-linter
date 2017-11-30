@@ -84,10 +84,20 @@ export function activate(context: vscode.ExtensionContext) {
 
 				// 若是字符串，删掉两侧的引号
 				if (arg.isString) {
+
+					// 如果引号左侧是 等号，则可能是 jsx 的 props，此时要替换成 {
+					const prevTextRange = new vscode.Range(arg.range.start.translate(0, -2), arg.range.start.translate(0, -1));
+					const prevText = document.getText(prevTextRange);
+
+					let finalReplaceVal = val;
+					if (prevText === '=') {
+						finalReplaceVal = '{' + val + '}';
+					}
+
 					edit.replace(document.uri, arg.range.with({
 						start: arg.range.start.translate(0, -1),
 						end: arg.range.end.translate(0, 1),
-					}), val);
+					}), finalReplaceVal);
 				} else {
 					edit.replace(document.uri, arg.range, '{' + val + '}');
 				}

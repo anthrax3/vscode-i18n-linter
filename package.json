@@ -29,14 +29,6 @@
           "description": "Mark Chinese characters in editor so you can quickly spot on them"
         }
       }
-    },
-    "menus": {
-      "editor/context": [
-        {
-          "command": "vscode-i18n-linter.extractI18N",
-          "group": "1_modification"
-        }
-      ]
     }
   },
   "keywords": [
