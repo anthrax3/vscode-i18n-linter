@@ -271,7 +271,8 @@ function updateLangFiles(lang: string, text: string) {
 			throw new Error('duplicate');
 		}
 
-		fs.writeFileSync(targetFilename, mainContent.replace(/(}\s*)$/, `  ,"${fullKey}": "${text}"\n$1`));
+		_.set(obj, fullKey, text);
+		fs.writeFileSync(targetFilename, `export default ${JSON.stringify(obj, null, 2)}`);
 	}
 }
 
