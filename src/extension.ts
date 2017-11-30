@@ -6,7 +6,8 @@ import { flatten } from './utils';
 import * as globby from 'globby';
 import * as _ from 'lodash';
 
-const I18N_GLOB = `${vscode.workspace.rootPath}/langs/zh_CN/*.ts`;
+const LANG_PREFIX = `${vscode.workspace.rootPath}/langs/zh_CN/`;
+const I18N_GLOB = `${LANG_PREFIX}*.ts`;
 
 export function activate(context: vscode.ExtensionContext) {
 	let finalLangObj = {};
@@ -33,7 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 				const actions = [];
 				for (const key in finalLangObj) {
-					if (finalLangObj[key].includes(text)) {
+					if (finalLangObj[key] === text) {
 						actions.push({
 							title: `抽取为 \`I18N.${key}\``,
 							command: "vscode-i18n-linter.extractI18N",
@@ -64,17 +65,16 @@ export function activate(context: vscode.ExtensionContext) {
 				return resolve(args.varName);
 			}
 
+			const currentFilename = activeEditor.document.fileName;
+			const suggestPage = currentFilename.match(/\/pages\/\w+\/([^\/]+)\//)[1];
+
 			// 否则要求用户输入变量名
 			return resolve(vscode.window.showInputBox({
-				prompt: '请输入对应的 I18N 变量，按 <回车> 启动替换',
-				value: 'I18N.',
+				prompt: '请输入变量名，格式 `I18N.[page].[key]`，按 <回车> 启动替换',
+				value: `I18N.${suggestPage + '.' || ''}`,
 				validateInput(input) {
-					if (!input.startsWith('I18N.')) {
-						return '请确保变量名以 `I18N.` 开头';
-					}
-
-					if (input.length < 5) {
-						return '请输入变量名';
+					if (!input.match(/^I18N\.\w+\.\w+/)) {
+						return '变量名格式 `I18N.[page].[key]`，如 `I18N.dim.new`，[key] 中可包含更多 `.`';
 					}
 				}
 			}));
@@ -86,7 +86,6 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const finalArgs = Array.isArray(args.targets) ? args.targets : [args.targets];
-
 			finalArgs.forEach((arg: TargetStr) => {
 				const edit = new vscode.WorkspaceEdit();
 				const { document } = vscode.window.activeTextEditor;
@@ -111,7 +110,14 @@ export function activate(context: vscode.ExtensionContext) {
 					edit.replace(document.uri, arg.range, '{' + val + '}');
 				}
 
-				vscode.workspace.applyEdit(edit);
+				try {
+					// 更新语言文件
+					updateLangFiles(val, arg.text);
+					// 若更新成功再替换代码
+					vscode.workspace.applyEdit(edit);
+				} catch (e) {
+
+				}
 			});
 
 			vscode.window.showInformationMessage(`成功替换 ${finalArgs.length} 处文案`);
@@ -219,15 +225,9 @@ function getSuggestLangObj() {
 		if (filename.replace(/\.tsx?/, '') === 'index') {
 			return prev;
 		}
+
 		const fileContent = fs.readFileSync(curr, { encoding: 'utf8' });
-		const obj = fileContent.match(/export\s*default\s*({[\s\S]+);?$/)[1];
-		let jsObj = {};
-		try {
-			jsObj = JSON.parse(obj.replace(/\s*;\s*$/, ''));
-		}
-		catch (err) {
-			console.error(err);
-		}
+		let jsObj = parseLangFileToObject(fileContent);
 		return {
 			...prev,
 			[filename]: jsObj,
@@ -235,6 +235,57 @@ function getSuggestLangObj() {
 	}, {});
 	const finalLangObj = flatten(langObj) as any;
 	return finalLangObj;
+}
+
+function parseLangFileToObject(fileContent: string) {
+	const obj = fileContent.match(/export\s*default\s*({[\s\S]+);?$/)[1];
+	let jsObj = {};
+	try {
+		jsObj = JSON.parse(obj.replace(/\s*;\s*$/, ''));
+	}
+	catch (err) {
+		console.error(err);
+	}
+	return jsObj;
+}
+
+function updateLangFiles(lang: string, text: string) {
+	if (!lang.startsWith('I18N.')) {
+		return;
+	}
+
+	const [, filename, ...restPath ] = lang.split('.');
+	const fullKey = restPath.join('.');
+	const targetFilename = `${LANG_PREFIX}${filename}.ts`;
+
+	if (!fs.existsSync(targetFilename)) {
+		fs.writeFileSync(targetFilename, generateNewLangFile(fullKey, text));
+		addImportToMainLangFile(filename);
+		vscode.window.showInformationMessage(`成功新建语言文件 ${targetFilename}`);
+	} else {
+		const mainContent = fs.readFileSync(targetFilename, 'utf8');
+		const obj = parseLangFileToObject(mainContent);
+
+		if (_.get(obj, fullKey) !== undefined) {
+			vscode.window.showErrorMessage(`${targetFilename} 中已存在 key 为 \`${fullKey}\` 的翻译，请重新命名变量`);
+			throw new Error('duplicate');
+		}
+
+		fs.writeFileSync(targetFilename, mainContent.replace(/(}\s*)$/, `  ,"${fullKey}": "${text}"\n$1`));
+	}
+}
+
+function generateNewLangFile(key: string, value: string) {
+	return `export default {
+	"${key}": "${value}"
+}`;
+}
+
+function addImportToMainLangFile(newFilename: string) {
+	let mainContent = fs.readFileSync(`${LANG_PREFIX}index.ts`, 'utf8');
+	mainContent = mainContent.replace(/^(\s*import.*?;)$/m, `$1\nimport ${newFilename} from './${newFilename}';`);
+	mainContent = mainContent.replace(/(}\);\s)/, `  ${newFilename},\n$1`);
+	fs.writeFileSync(`${LANG_PREFIX}index.ts`, mainContent);
 }
 
 // this method is called when your extension is deactivated
