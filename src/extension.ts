@@ -112,11 +112,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 				try {
 					// 更新语言文件
-					updateLangFiles(val, arg.text);
+					updateLangFiles(val, arg.text, !args.varName);
 					// 若更新成功再替换代码
 					vscode.workspace.applyEdit(edit);
 				} catch (e) {
-
 				}
 			});
 
@@ -249,7 +248,7 @@ function parseLangFileToObject(fileContent: string) {
 	return jsObj;
 }
 
-function updateLangFiles(lang: string, text: string) {
+function updateLangFiles(lang: string, text: string, validateDuplicate: boolean) {
 	if (!lang.startsWith('I18N.')) {
 		return;
 	}
@@ -266,7 +265,7 @@ function updateLangFiles(lang: string, text: string) {
 		const mainContent = fs.readFileSync(targetFilename, 'utf8');
 		const obj = parseLangFileToObject(mainContent);
 
-		if (_.get(obj, fullKey) !== undefined) {
+		if (validateDuplicate && _.get(obj, fullKey) !== undefined) {
 			vscode.window.showErrorMessage(`${targetFilename} 中已存在 key 为 \`${fullKey}\` 的翻译，请重新命名变量`);
 			throw new Error('duplicate');
 		}
