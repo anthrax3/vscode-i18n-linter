@@ -21,12 +21,27 @@
   "contributes": {
     "configuration": {
       "type": "object",
-      "title": "Toggle vscode-i18n-linter",
+      "title": "I18N Linter",
       "properties": {
-        "vscode-i18n-linter.markChineseCharacters": {
+        "vscode-i18n-linter.stringLiteralRegex": {
+          "type": "string",
+          "default": "/[\u4E00-\u9FCC\u3400-\u4DB5\uFA0E\uFA0F\uFA11\uFA13\uFA14\uFA1F\uFA21\uFA23\uFA24\uff1a\uff0c\uFA27-\uFA29]|[\ud840-\ud868][\udc00-\udfff]|\ud869[\udc00-\uded6\udf00-\udfff]|[\ud86a-\ud86c][\udc00-\udfff]|\ud86d[\udc00-\udf34\udf40-\udfff]|\ud86e[\udc00-\udc1d]|[\uff01-\uff5e\u3000-\u3009\u2026]/",
+          "description": "The regular expression to identify string literals to be translated to I18N symbol"
+        },
+        "vscode-i18n-linter.markStringLiterals": {
           "type": "boolean",
           "default": true,
-          "description": "Mark Chinese characters in editor so you can quickly spot on them"
+          "description": "Mark string literals in editor so you can quickly spot on them"
+        },
+        "vscode-i18n-linter.enableReplaceSuggestion": {
+          "type": "boolean",
+          "default": true,
+          "description": "Add a light blob beside string literal and provide I18N variable replacement suggestions"
+        },
+        "vscode-i18n-linter.i18nFilesPattern": {
+          "type": "string",
+          "default": "",
+          "description": "A glob expression (eg. abc/**/*.ts) to match I18N translation files"
         }
       }
     }

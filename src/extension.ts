@@ -124,7 +124,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	var timeout = null;
 	function triggerUpdateDecorations() {
-		if (vscode.workspace.getConfiguration('vscode-i18n-linter').get('markChineseCharacters') !== true) {
+		if (vscode.workspace.getConfiguration('vscode-i18n-linter').get('markStringLiterals') !== true) {
 			return;
 		}
 
@@ -164,6 +164,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const possibleOccurenceEx = /(["'`])\s*(.+?)\s*\1|>\s*([^<{\)]+?)\s*[<{]/g;
 		const hasCJKEx = /[\u4E00-\u9FCC\u3400-\u4DB5\uFA0E\uFA0F\uFA11\uFA13\uFA14\uFA1F\uFA21\uFA23\uFA24\uff1a\uff0c\uFA27-\uFA29]|[\ud840-\ud868][\udc00-\udfff]|\ud869[\udc00-\uded6\udf00-\udfff]|[\ud86a-\ud86c][\udc00-\udfff]|\ud86d[\udc00-\udf34\udf40-\udfff]|\ud86e[\udc00-\udc1d]|[\uff01-\uff5e\u3000-\u3009\u2026]/;
+		const containsCommentEx = /\/\*\*/;
 		const text = activeEditor.document.getText();
 		const chineseChars: vscode.DecorationOptions[] = [];
 
@@ -175,7 +176,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const m = match[3] || match[2];
-			if (!m.match(hasCJKEx)) {
+			if (!m.match(hasCJKEx) || m.match(containsCommentEx)) {
 				continue;
 			}
 
