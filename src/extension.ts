@@ -27,7 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
 					if (finalLangObj[key].includes(text)) {
 						actions.push({
 							title: `抽取为 \`I18N.${key}\``,
-							command: "vscode-react-i18n.extractI18N",
+							command: "vscode-i18n-linter.extractI18N",
 							arguments: [{
 								targets: sameTextStrs,
 								varName: `I18N.${key}`,
@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 				return actions.concat({
 					title: `抽取为自定义 I18N 变量（共${sameTextStrs.length}处）`,
-					command: "vscode-react-i18n.extractI18N",
+					command: "vscode-i18n-linter.extractI18N",
 					arguments: [{
 						targets: sameTextStrs,
 					}],
@@ -48,7 +48,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	// 点击小灯泡后进行替换操作
-	vscode.commands.registerCommand('vscode-react-i18n.extractI18N', (args) => {
+	vscode.commands.registerCommand('vscode-i18n-linter.extractI18N', (args) => {
 		new Promise(resolve => {
 			// 若变量名已确定则直接开始替换
 			if (args.varName) {
@@ -114,7 +114,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	var timeout = null;
 	function triggerUpdateDecorations() {
-		if (vscode.workspace.getConfiguration('vscode-react-i18n').get('markChineseCharacters') !== true) {
+		if (vscode.workspace.getConfiguration('vscode-i18n-linter').get('markChineseCharacters') !== true) {
 			return;
 		}
 
