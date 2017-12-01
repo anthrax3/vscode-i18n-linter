@@ -37,7 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
 					if (finalLangObj[key] === text) {
 						actions.push({
 							title: `抽取为 \`I18N.${key}\``,
-							command: "vscodeI18nLinter.extractI18N",
+							command: "vscode-i18n-linter.extractI18N",
 							arguments: [{
 								targets: sameTextStrs,
 								varName: `I18N.${key}`,
@@ -48,7 +48,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 				return actions.concat({
 					title: `抽取为自定义 I18N 变量（共${sameTextStrs.length}处）`,
-					command: "vscodeI18nLinter.extractI18N",
+					command: "vscode-i18n-linter.extractI18N",
 					arguments: [{
 						targets: sameTextStrs,
 					}],
@@ -58,7 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	// 点击小灯泡后进行替换操作
-	vscode.commands.registerCommand('vscodeI18nLinter.extractI18N', (args) => {
+	vscode.commands.registerCommand('vscode-i18n-linter.extractI18N', (args) => {
 		new Promise(resolve => {
 			// 若变量名已确定则直接开始替换
 			if (args.varName) {
@@ -98,7 +98,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	// 使用 cmd + shift + p 执行的公共文案替换
-	vscode.commands.registerCommand('vscodeI18nLinter.replaceCommon', () => {
+	vscode.commands.registerCommand('vscode-i18n-linter.replaceCommon', () => {
 		const commandKeys = Object.keys(finalLangObj).filter(k => k.includes('common.'));
 		if (targetStrs.length === 0 || commandKeys.length === 0) {
 			vscode.window.showInformationMessage('没有找到可替换的公共文案');
@@ -190,7 +190,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	var timeout = null;
 	function triggerUpdateDecorations() {
-		if (vscode.workspace.getConfiguration('vscodeI18nLinter').get('markStringLiterals') !== true) {
+		if (vscode.workspace.getConfiguration('vscode-i18n-linter').get('markStringLiterals') !== true) {
 			return;
 		}
 
