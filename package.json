@@ -1,8 +1,8 @@
 {
-  "name": "vscode-i18n-linter",
+  "name": "vscodeI18nLinter",
   "displayName": "I18N Linter",
   "description": "A VSCode extension to identify and extract string literals for js(x)/ts(x) files",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "publisher": "undefinedvs",
   "engines": {
     "vscode": "^1.18.0"
@@ -15,7 +15,8 @@
     "onLanguage:typescript",
     "onLanguage:typescriptreact",
     "onLanguage:javascriptreact",
-    "onLanguage:javascript"
+    "onLanguage:javascript",
+    "onCommand:vscodeI18nLinter.replaceCommon"
   ],
   "main": "./out/extension",
   "icon": "icon.png",
@@ -24,28 +25,32 @@
       "type": "object",
       "title": "I18N Linter",
       "properties": {
-        "vscode-i18n-linter.stringLiteralRegex": {
+        "vscodeI18nLinter.stringLiteralRegex": {
           "type": "string",
           "default": "",
           "description": "The regular expression to identify string literals to be translated to I18N symbol"
         },
-        "vscode-i18n-linter.markStringLiterals": {
+        "vscodeI18nLinter.markStringLiterals": {
           "type": "boolean",
           "default": true,
           "description": "Mark string literals in editor so you can quickly spot on them"
         },
-        "vscode-i18n-linter.enableReplaceSuggestion": {
+        "vscodeI18nLinter.enableReplaceSuggestion": {
           "type": "boolean",
           "default": true,
           "description": "Add a light blob beside string literal and provide I18N variable replacement suggestions"
         },
-        "vscode-i18n-linter.i18nFilesPattern": {
+        "vscodeI18nLinter.i18nFilesPattern": {
           "type": "string",
           "default": "",
           "description": "A glob expression (eg. abc/**/*.ts) to match I18N translation files"
         }
       }
-    }
+    },
+    "commands": [{
+      "command": "vscodeI18nLinter.replaceCommon",
+      "title": "Replace Common String Literals to I18N variables"
+    }]
   },
   "keywords": [
     "React",

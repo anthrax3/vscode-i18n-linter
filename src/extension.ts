@@ -37,7 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
 					if (finalLangObj[key] === text) {
 						actions.push({
 							title: `抽取为 \`I18N.${key}\``,
-							command: "vscode-i18n-linter.extractI18N",
+							command: "vscodeI18nLinter.extractI18N",
 							arguments: [{
 								targets: sameTextStrs,
 								varName: `I18N.${key}`,
@@ -48,7 +48,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 				return actions.concat({
 					title: `抽取为自定义 I18N 变量（共${sameTextStrs.length}处）`,
-					command: "vscode-i18n-linter.extractI18N",
+					command: "vscodeI18nLinter.extractI18N",
 					arguments: [{
 						targets: sameTextStrs,
 					}],
@@ -58,7 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	// 点击小灯泡后进行替换操作
-	vscode.commands.registerCommand('vscode-i18n-linter.extractI18N', (args) => {
+	vscode.commands.registerCommand('vscodeI18nLinter.extractI18N', (args) => {
 		new Promise(resolve => {
 			// 若变量名已确定则直接开始替换
 			if (args.varName) {
@@ -86,40 +86,54 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const finalArgs = Array.isArray(args.targets) ? args.targets : [args.targets];
-			finalArgs.forEach((arg: TargetStr) => {
-				const edit = new vscode.WorkspaceEdit();
-				const { document } = vscode.window.activeTextEditor;
-
-				// 若是字符串，删掉两侧的引号
-				if (arg.isString) {
-
-					// 如果引号左侧是 等号，则可能是 jsx 的 props，此时要替换成 {
-					const prevTextRange = new vscode.Range(arg.range.start.translate(0, -2), arg.range.start.translate(0, -1));
-					const prevText = document.getText(prevTextRange);
-
-					let finalReplaceVal = val;
-					if (prevText === '=') {
-						finalReplaceVal = '{' + val + '}';
-					}
-
-					edit.replace(document.uri, arg.range.with({
-						start: arg.range.start.translate(0, -1),
-						end: arg.range.end.translate(0, 1),
-					}), finalReplaceVal);
-				} else {
-					edit.replace(document.uri, arg.range, '{' + val + '}');
-				}
-
-				try {
-					// 更新语言文件
-					updateLangFiles(val, arg.text, !args.varName);
-					// 若更新成功再替换代码
-					vscode.workspace.applyEdit(edit);
-				} catch (e) {
-				}
+			finalArgs.reduce((prev: Promise<any>, curr: TargetStr) => {
+				return prev.then(() => {
+					return replaceAndUpdate(curr, val, args);
+				});
+			}, Promise.resolve())
+			.then(() => {
+				vscode.window.showInformationMessage(`成功替换 ${finalArgs.length} 处文案`);
 			});
+		});
+	});
 
-			vscode.window.showInformationMessage(`成功替换 ${finalArgs.length} 处文案`);
+	// 使用 cmd + shift + p 执行的公共文案替换
+	vscode.commands.registerCommand('vscodeI18nLinter.replaceCommon', () => {
+		const commandKeys = Object.keys(finalLangObj).filter(k => k.includes('common.'));
+		if (targetStrs.length === 0 || commandKeys.length === 0) {
+			vscode.window.showInformationMessage('没有找到可替换的公共文案');
+			return;
+		}
+
+		const replaceableStrs = targetStrs.reduce((prev, curr) => {
+			const key = findMatchKey(finalLangObj, curr.text);
+			if (key && key.startsWith('common.')) {
+				return prev.concat({
+					target: curr,
+					key,
+				});
+			}
+
+			return prev;
+		}, []);
+
+		if (replaceableStrs.length === 0) {
+			vscode.window.showInformationMessage('没有找到可替换的公共文案');
+			return;
+		}
+
+		vscode.window.showInformationMessage(`共找到 ${replaceableStrs.length} 处可自动替换的文案，是否替换？`, { modal: true }, 'Yes')
+		.then(action => {
+			if (action === 'Yes') {
+				replaceableStrs.reduce((prev: Promise<any>, obj) => {
+					return prev.then(() => {
+						return replaceAndUpdate(obj.target, `I18N.${obj.key}`, { varName: obj.key });
+					});
+				}, Promise.resolve())
+				.then(() => {
+					vscode.window.showInformationMessage('替换完成');
+				});
+			}
 		})
 	});
 
@@ -136,9 +150,47 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}, null, context.subscriptions);
 
+	/**
+	 * 更新文件
+	 * @param arg  目标字符串对象
+	 * @param val  目标 key
+	 * @param args
+	 */
+	function replaceAndUpdate(arg: TargetStr, val: string, args: any): Thenable<any> {
+		const edit = new vscode.WorkspaceEdit();
+		const { document } = vscode.window.activeTextEditor;
+		// 若是字符串，删掉两侧的引号
+		if (arg.isString) {
+			// 如果引号左侧是 等号，则可能是 jsx 的 props，此时要替换成 {
+			const prevTextRange = new vscode.Range(arg.range.start.translate(0, -2), arg.range.start.translate(0, -1));
+			const prevText = document.getText(prevTextRange);
+			let finalReplaceVal = val;
+			if (prevText === '=') {
+				finalReplaceVal = '{' + val + '}';
+			}
+			edit.replace(document.uri, arg.range.with({
+				start: arg.range.start.translate(0, -1),
+				end: arg.range.end.translate(0, 1),
+			}), finalReplaceVal);
+		}
+		else {
+			edit.replace(document.uri, arg.range, '{' + val + '}');
+		}
+
+		try {
+			// 更新语言文件
+			updateLangFiles(val, arg.text, !args.varName);
+			// 若更新成功再替换代码
+			return vscode.workspace.applyEdit(edit);
+		}
+		catch (e) {
+			return Promise.reject(e.message);
+		}
+	}
+
 	var timeout = null;
 	function triggerUpdateDecorations() {
-		if (vscode.workspace.getConfiguration('vscode-i18n-linter').get('markStringLiterals') !== true) {
+		if (vscode.workspace.getConfiguration('vscodeI18nLinter').get('markStringLiterals') !== true) {
 			return;
 		}
 
@@ -227,6 +279,11 @@ function getSuggestLangObj() {
 
 		const fileContent = fs.readFileSync(curr, { encoding: 'utf8' });
 		let jsObj = parseLangFileToObject(fileContent);
+
+		if (Object.keys(jsObj).length === 0) {
+			vscode.window.showWarningMessage(`\`${curr}\` 解析失败，该文件包含的文案无法自动补全`);
+		}
+
 		return {
 			...prev,
 			[filename]: jsObj,
@@ -243,6 +300,7 @@ function parseLangFileToObject(fileContent: string) {
 		jsObj = JSON.parse(obj.replace(/\s*;\s*$/, ''));
 	}
 	catch (err) {
+		console.log(obj)
 		console.error(err);
 	}
 	return jsObj;
@@ -265,6 +323,10 @@ function updateLangFiles(lang: string, text: string, validateDuplicate: boolean)
 		const mainContent = fs.readFileSync(targetFilename, 'utf8');
 		const obj = parseLangFileToObject(mainContent);
 
+		if (Object.keys(obj).length === 0) {
+			vscode.window.showWarningMessage(`${filename} 解析失败，该文件包含的文案无法自动补全`);
+		}
+
 		if (validateDuplicate && _.get(obj, fullKey) !== undefined) {
 			vscode.window.showErrorMessage(`${targetFilename} 中已存在 key 为 \`${fullKey}\` 的翻译，请重新命名变量`);
 			throw new Error('duplicate');
@@ -286,6 +348,16 @@ function addImportToMainLangFile(newFilename: string) {
 	mainContent = mainContent.replace(/^(\s*import.*?;)$/m, `$1\nimport ${newFilename} from './${newFilename}';`);
 	mainContent = mainContent.replace(/(}\);\s)/, `  ${newFilename},\n$1`);
 	fs.writeFileSync(`${LANG_PREFIX}index.ts`, mainContent);
+}
+
+function findMatchKey(langObj, text) {
+	for (const key in langObj) {
+		if (langObj[key] === text) {
+			return key;
+		}
+	}
+
+	return null;
 }
 
 // this method is called when your extension is deactivated
