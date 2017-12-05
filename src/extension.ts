@@ -66,12 +66,22 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const currentFilename = activeEditor.document.fileName;
-			const suggestPage = currentFilename.match(/\/pages\/\w+\/([^\/]+)\//)[1];
+			const suggestPageRegex = /\/pages\/\w+\/([^\/]+)\/([^\/\.]+)/;
+			const suggestComponentRegex = /\/components\/(\w+)\/.*?\.tsx?/;
+
+			let suggestion = [];
+			if (currentFilename.includes('/pages/')) {
+				suggestion = currentFilename.match(suggestPageRegex);
+			} else {
+				suggestion = currentFilename.match(suggestComponentRegex);
+			}
+
+			suggestion.shift();
 
 			// 否则要求用户输入变量名
 			return resolve(vscode.window.showInputBox({
 				prompt: '请输入变量名，格式 `I18N.[page].[key]`，按 <回车> 启动替换',
-				value: `I18N.${suggestPage + '.' || ''}`,
+				value: `I18N.${suggestion.length ? suggestion.join('.') + '.' : ''}`,
 				validateInput(input) {
 					if (!input.match(/^I18N\.\w+\.\w+/)) {
 						return '变量名格式 `I18N.[page].[key]`，如 `I18N.dim.new`，[key] 中可包含更多 `.`';
@@ -86,9 +96,10 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const finalArgs = Array.isArray(args.targets) ? args.targets : [args.targets];
-			finalArgs.reduce((prev: Promise<any>, curr: TargetStr) => {
+			finalArgs.reduce((prev: Promise<any>, curr: TargetStr, index: number) => {
 				return prev.then(() => {
-					return replaceAndUpdate(curr, val, args);
+					const isEditCommon = val.startsWith('I18N.common.');
+					return replaceAndUpdate(curr, val, !isEditCommon && index === 0 ? !args.varName : false);
 				});
 			}, Promise.resolve())
 			.then(() => {
@@ -127,11 +138,14 @@ export function activate(context: vscode.ExtensionContext) {
 			if (action === 'Yes') {
 				replaceableStrs.reduce((prev: Promise<any>, obj) => {
 					return prev.then(() => {
-						return replaceAndUpdate(obj.target, `I18N.${obj.key}`, { varName: obj.key });
+						return replaceAndUpdate(obj.target, `I18N.${obj.key}`, false);
 					});
 				}, Promise.resolve())
 				.then(() => {
 					vscode.window.showInformationMessage('替换完成');
+				})
+				.catch(e => {
+					vscode.window.showErrorMessage(e.message);
 				});
 			}
 		})
@@ -154,9 +168,9 @@ export function activate(context: vscode.ExtensionContext) {
 	 * 更新文件
 	 * @param arg  目标字符串对象
 	 * @param val  目标 key
-	 * @param args
+	 * @param validateDuplicate 是否校验文件中已经存在要写入的 key
 	 */
-	function replaceAndUpdate(arg: TargetStr, val: string, args: any): Thenable<any> {
+	function replaceAndUpdate(arg: TargetStr, val: string, validateDuplicate: boolean): Thenable<any> {
 		const edit = new vscode.WorkspaceEdit();
 		const { document } = vscode.window.activeTextEditor;
 		// 若是字符串，删掉两侧的引号
@@ -179,7 +193,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		try {
 			// 更新语言文件
-			updateLangFiles(val, arg.text, !args.varName);
+			updateLangFiles(val, arg.text, validateDuplicate);
 			// 若更新成功再替换代码
 			return vscode.workspace.applyEdit(edit);
 		}
