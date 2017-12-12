@@ -25,7 +25,7 @@ export function activate(context: vscode.ExtensionContext) {
 	finalLangObj = getSuggestLangObj();
 
 	// 识别到出错时点击小灯泡弹出的操作
-	vscode.languages.registerCodeActionsProvider('typescriptreact', {
+	vscode.languages.registerCodeActionsProvider(['typescriptreact', 'typescript', 'javascriptreact', 'javascript'], {
     provideCodeActions: function(document, range, context, token) {
 			const targetStr = targetStrs.find(t => range.intersection(t.range) !== undefined);
 			if (targetStr) {
