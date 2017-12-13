@@ -194,7 +194,7 @@ export function activate(context: vscode.ExtensionContext) {
 						.map((str, index) => {
 							return `val${index+1}: ${str.replace(/^\${([^\}]+)\}$/, '$1')}`;
 						});
-					finalReplaceVal = `I18N.get('${val.replace(/^I18N\./, '')}', { ${kvPair.join(',\n')} })`;
+					finalReplaceVal = `I18N.get(val, { ${kvPair.join(',\n')} })`;
 
 					varInStr.forEach((str, index) => {
 						finalReplaceText = finalReplaceText.replace(str, `{val${index+1}}`);
