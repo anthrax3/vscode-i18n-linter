@@ -2,7 +2,7 @@
   "name": "vscode-i18n-linter",
   "displayName": "I18N Linter",
   "description": "A VSCode extension to identify and extract string literals for js(x)/ts(x) files",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "publisher": "undefinedvs",
   "engines": {
     "vscode": "^1.18.0"
