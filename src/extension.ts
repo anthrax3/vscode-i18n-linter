@@ -194,7 +194,7 @@ export function activate(context: vscode.ExtensionContext) {
 						.map((str, index) => {
 							return `val${index+1}: ${str.replace(/^\${([^\}]+)\}$/, '$1')}`;
 						});
-					finalReplaceVal = `I18N.get(val, { ${kvPair.join(',\n')} })`;
+					finalReplaceVal = `I18N.template(${val}, { ${kvPair.join(',\n')} })`;
 
 					varInStr.forEach((str, index) => {
 						finalReplaceText = finalReplaceText.replace(str, `{val${index+1}}`);
@@ -365,7 +365,8 @@ function updateLangFiles(lang: string, text: string, validateDuplicate: boolean)
 			vscode.window.showErrorMessage(`${targetFilename} 中已存在 key 为 \`${fullKey}\` 的翻译，请重新命名变量`);
 			throw new Error('duplicate');
 		}
-
+		// \n 会被自动转义成 \\n，这里转回来
+		text = text.replace(/\\n/gm, '\n');
 		_.set(obj, fullKey, text);
 		fs.writeFileSync(targetFilename, `export default ${JSON.stringify(obj, null, 2)}`);
 	}
